@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
+<title>MT3000 3D</title>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#eef3f7;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+#info{
+  position:fixed;
+  z-index:10;
+  top:18px;
+  left:20px;
+}
+
+#info h1{
+  margin:0;
+  font-size:21px;
+}
+
+#info p{
+  margin:4px 0;
+  font-size:12px;
+  opacity:.55;
+}
+
+#buttons{
+  position:fixed;
+  z-index:10;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:7px;
+  padding:8px;
+  border-radius:18px;
+  background:#ffffffdd;
+  backdrop-filter:blur(15px);
+  box-shadow:0 8px 30px #0002;
+}
+
+button{
+  border:0;
+  border-radius:11px;
+  padding:10px 12px;
+  background:#edf2f6;
+  font-size:12px;
+}
+
+button:active{
+  transform:scale(.95);
+}
+</style>
+</head>
+
+<body>
+
+<div id="info">
+  <h1>GL-MT3000 · Beryl AX</h1>
+  <p>MT3000 Manager · 3D Preview</p>
+</div>
+
+<div id="buttons">
+  <button onclick="rotate()">自动旋转</button>
+  <button onclick="view(0)">正面</button>
+  <button onclick="view(90)">侧面</button>
+  <button onclick="view(180)">背面</button>
+  <button onclick="view(270)">顶部</button>
+</div>
+
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+
+import * as THREE from "three";
+import {OrbitControls}
+from "three/addons/controls/OrbitControls.js";
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xeef3f7);
+
+const camera=new THREE.PerspectiveCamera(
+  38,
+  innerWidth/innerHeight,
+  .01,
+  100
+);
+
+camera.position.set(2.8,2.1,3.4);
+
+const renderer=new THREE.WebGLRenderer({
+  antialias:true
+});
+
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+document.body.appendChild(renderer.domElement);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+
+controls.enableDamping=true;
+controls.dampingFactor=.06;
+controls.minDistance=2;
+controls.maxDistance=7;
+controls.target.set(0,.35,0);
+
+const hemi=new THREE.HemisphereLight(
+  0xffffff,
+  0x8899aa,
+  2
+);
+
+scene.add(hemi);
+
+const light=new THREE.DirectionalLight(
+  0xffffff,
+  3
+);
+
+light.position.set(3,5,4);
+light.castShadow=true;
+
+scene.add(light);
+
+
+/* --------------------
+   材质
+-------------------- */
+
+const bodyMat=new THREE.MeshStandardMaterial({
+  color:0xcbd8df,
+  roughness:.32,
+  metalness:.05
+});
+
+const darkMat=new THREE.MeshStandardMaterial({
+  color:0x263039,
+  roughness:.4
+});
+
+const blackMat=new THREE.MeshStandardMaterial({
+  color:0x11171b,
+  roughness:.35
+});
+
+const blueMat=new THREE.MeshStandardMaterial({
+  color:0x168cff,
+  emissive:0x168cff,
+  emissiveIntensity:2
+});
+
+
+/* --------------------
+   圆角盒子
+-------------------- */
+
+function roundedBox(
+  x,y,z,
+  px,py,pz,
+  material,
+  radius=.08
+){
+
+  const shape=new THREE.Shape();
+
+  const w=px;
+  const h=pz;
+  const r=Math.min(radius,w/2,h/2);
+
+  shape.moveTo(-w/2+r,-h/2);
+  shape.lineTo(w/2-r,-h/2);
+
+  shape.quadraticCurveTo(
+    w/2,-h/2,
+    w/2,-h/2+r
+  );
+
+  shape.lineTo(w/2,h/2-r);
+
+  shape.quadraticCurveTo(
+    w/2,h/2,
+    w/2-r,h/2
+  );
+
+  shape.lineTo(-w/2+r,h/2);
+
+  shape.quadraticCurveTo(
+    -w/2,h/2,
+    -w/2,h/2-r
+  );
+
+  shape.lineTo(-w/2,-h/2+r);
+
+  shape.quadraticCurveTo(
+    -w/2,-h/2,
+    -w/2+r,-h/2
+  );
+
+  const geo=new THREE.ExtrudeGeometry(shape,{
+    depth:py,
+    bevelEnabled:true,
+    bevelSegments:3,
+    bevelSize:.035,
+    bevelThickness:.035
+  });
+
+  geo.rotateX(Math.PI/2);
+  geo.translate(x,y,z);
+
+  const mesh=new THREE.Mesh(geo,material);
+
+  mesh.castShadow=true;
+  mesh.receiveShadow=true;
+
+  scene.add(mesh);
+
+  return mesh;
+}
+
+
+/* --------------------
+   主机身
+-------------------- */
+
+roundedBox(
+  0,.35,0,
+  3.25,.72,2.2,
+  bodyMat,
+  .18
+);
+
+
+/* --------------------
+   天线
+-------------------- */
+
+function antenna(x){
+
+  const geo=new THREE.CapsuleGeometry(
+    .17,
+    2.45,
+    8,
+    16
+  );
+
+  const mesh=new THREE.Mesh(
+    geo,
+    bodyMat
+  );
+
+  mesh.position.set(
+    x,
+    1.9,
+    -.05
+  );
+
+  mesh.castShadow=true;
+
+  scene.add(mesh);
+}
+
+antenna(-1.18);
+antenna(1.18);
+
+
+/* --------------------
+   前 LED
+-------------------- */
+
+roundedBox(
+  0,.72,1.12,
+  .75,.035,.045,
+  blueMat,
+  .02
+);
+
+
+/* --------------------
+   后方接口
+-------------------- */
+
+function port(x,w=.35){
+
+  roundedBox(
+    x,.70,-1.13,
+    w,.08,.42,
+    blackMat,
+    .04
+  );
+}
+
+port(-1.05,.34);
+port(-.45,.45);
+port(.25,.42);
+port(.90,.42);
+
+
+/* USB-C 小接口 */
+
+roundedBox(
+  -1.05,.70,-1.18,
+  .22,.08,.15,
+  darkMat,
+  .03
+);
+
+
+/* --------------------
+   模式按钮
+-------------------- */
+
+const buttonGeo=
+  new THREE.CylinderGeometry(
+    .09,.09,.06,24
+  );
+
+const button=new THREE.Mesh(
+  buttonGeo,
+  darkMat
+);
+
+button.rotation.x=Math.PI/2;
+button.position.set(
+  1.28,.72,-1.14
+);
+
+scene.add(button);
+
+
+/* --------------------
+   侧面散热孔
+-------------------- */
+
+function ventSide(z){
+
+  const geo=new THREE.BoxGeometry(
+    .04,.035,.55
+  );
+
+  const mesh=new THREE.Mesh(
+    geo,
+    darkMat
+  );
+
+  mesh.position.set(
+    1.64,.72,z
+  );
+
+  scene.add(mesh);
+}
+
+for(let i=-3;i<=3;i++){
+  ventSide(i*.22);
+}
+
+
+/* --------------------
+   底部
+-------------------- */
+
+for(const x of [-1.25,1.25]){
+  for(const z of [-.75,.75]){
+
+    const foot=new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .12,.12,.10,20
+      ),
+      blackMat
+    );
+
+    foot.position.set(
+      x,.02,z
+    );
+
+    scene.add(foot);
+  }
+}
+
+
+/* --------------------
+   地面
+-------------------- */
+
+const floor=new THREE.Mesh(
+  new THREE.PlaneGeometry(20,20),
+  new THREE.MeshStandardMaterial({
+    color:0xeef3f7,
+    roughness:.8
+  })
+);
+
+floor.rotation.x=-Math.PI/2;
+floor.position.y=-.08;
+floor.receiveShadow=true;
+
+scene.add(floor);
+
+
+/* --------------------
+   自动旋转
+-------------------- */
+
+let spinning=true;
+
+function rotate(){
+  spinning=!spinning;
+}
+
+window.rotate=rotate;
+
+function view(angle){
+
+  const r=angle*Math.PI/180;
+
+  const distance=4.5;
+
+  camera.position.x=
+    Math.sin(r)*distance;
+
+  camera.position.z=
+    Math.cos(r)*distance;
+
+  camera.position.y=2.5;
+
+  controls.target.set(
+    0,.7,0
+  );
+
+  controls.update();
+}
+
+window.view=view;
+
+
+/* --------------------
+   动画
+-------------------- */
+
+function animate(){
+
+  requestAnimationFrame(animate);
+
+  if(spinning){
+
+    scene.rotation.y+=.0025;
+
+  }
+
+  controls.update();
+
+  renderer.render(
+    scene,
+    camera
+  );
+}
+
+animate();
+
+
+/* --------------------
+   手机屏幕适配
+-------------------- */
+
+addEventListener(
+  "resize",
+  ()=>{
+    camera.aspect=
+      innerWidth/innerHeight;
+
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+      innerWidth,
+      innerHeight
+    );
+  }
+);
+
+</script>
+
+</body>
+</html>
